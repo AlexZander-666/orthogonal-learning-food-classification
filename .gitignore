@@ -1,0 +1,112 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyTorch
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+
+# Data
+data/
+datasets/
+*.zip
+*.tar
+*.gz
+
+# Outputs
+checkpoints/
+runs/
+logs/
+outputs/
+results/
+ablation_results/
+*.log
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Tensorboard
+events.out.tfevents.*
+
+# ONNX
+*.onnx
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# arXiv and Paper files (keep paper/ folder but ignore compiled files)
+*.aux
+*.bbl
+*.blg
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.out
+*.toc
+*.pdf
+*.docx
+*.pptx
+
+# Project documentation files (keep these local)
+ARXIV_QUICK_START.md
+arxiv_submission_guide.md
+COMPLETION_REPORT.md
+FINAL_CHECKLIST.md
+GITHUB_SETUP.md
+MY_ARXIV_SUBMISSION.md
+OVERLEAF_GUIDE.md
+PROJECT_SUMMARY.md
+artical.md
+MoblieNetV3.txt
+ACCESS_latex_template_20240429/
+compile_paper.bat
+compile_paper.sh
+arxiv_submission.zip
+
+

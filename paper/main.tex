@@ -1,0 +1,208 @@
+\documentclass[11pt]{article}
+
+% 基础包
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{multirow}
+
+% 页面设置
+\usepackage[margin=1in]{geometry}
+
+% 超链接颜色
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+% 标题信息
+\title{Lightweight Food Image Classification via Knowledge Distillation and Attention Mechanisms}
+
+\author{
+    Alex Zander\thanks{Email: 21011149@mail.ecust.edu.cn} \\
+    East China University of Science and Technology \\
+    Shanghai, People's Republic of China
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Deep convolutional neural networks have achieved remarkable success in image classification, but high-performance models are often too heavy for mobile deployment. In this work, we propose a lightweight food image classification method that combines knowledge distillation with attention mechanisms. Specifically, we use ResNet-50 as the teacher model to guide the training of a MobileNetV3 student model enhanced with attention modules. On the Food-101 dataset, our approach achieves 78.50\% accuracy with the ECA attention mechanism, surpassing the teacher model's 76.76\% while using only 21.5\% of its parameters and 5.4\% of its FLOPs. We conduct comprehensive ablation studies to validate the effectiveness of each component and systematically compare multiple attention mechanisms (ECA, SimAM, CBAM, SE, and CoordAttention). Our results demonstrate that the combination of attention mechanisms and knowledge distillation enables lightweight models to achieve superior performance with significantly reduced computational costs, making them suitable for resource-constrained mobile applications.
+\end{abstract}
+
+\section{Introduction}
+
+Food image classification is a challenging fine-grained recognition task with applications in dietary monitoring, restaurant recommendation, and nutritional analysis. The Food-101 dataset~\cite{bossard2014food} contains 101 categories with 101,000 images, characterized by high intra-class variance and inter-class similarity.
+
+While deep convolutional neural networks such as ResNet~\cite{he2016deep} and Inception~\cite{szegedy2015going} achieve high accuracy, their large parameter counts and computational costs make them impractical for mobile deployment. MobileNetV3~\cite{howard2019searching} offers an efficient alternative through network architecture search and efficient building blocks, but its accuracy often lags behind heavier models.
+
+Knowledge distillation~\cite{hinton2015distilling} provides a solution by transferring knowledge from a large teacher model to a compact student model. By matching the soft outputs of the teacher, students can achieve better generalization than training from scratch. Recent work~\cite{zagoruyko2016paying} has shown that combining distillation with attention mechanisms can further improve student performance.
+
+In this work, we integrate efficient attention modules into MobileNetV3 and train it via knowledge distillation. Our main contributions are:
+
+\begin{itemize}
+    \item We propose a lightweight framework that combines attention mechanisms with knowledge distillation for food image classification.
+    \item We achieve 78.50\% accuracy on Food-101 with MobileNetV3+ECA, surpassing the ResNet-50 teacher (76.76\%) while using only 5.5M parameters compared to the teacher's 25.6M.
+    \item We conduct comprehensive ablation studies demonstrating that attention and distillation have complementary effects, with their combination yielding 4.27\% improvement over the baseline.
+    \item We systematically compare six attention mechanisms, providing practical insights for lightweight network design.
+\end{itemize}
+
+\section{Related Work}
+
+\subsection{Knowledge Distillation}
+
+Knowledge distillation~\cite{hinton2015distilling} transfers knowledge from a teacher network to a student network by minimizing the KL divergence between their soft outputs. Subsequent works have explored various distillation strategies, including feature-based distillation~\cite{romero2014fitnets}, attention transfer~\cite{zagoruyko2016paying}, and multi-teacher distillation. Our work employs the classic output-based distillation combined with hard label supervision.
+
+\subsection{Lightweight Networks}
+
+MobileNets~\cite{howard2017mobilenets,sandler2018mobilenetv2,howard2019searching} utilize depthwise separable convolutions to reduce parameters and computations. MobileNetV3~\cite{howard2019searching} further improves efficiency through neural architecture search and introduces lightweight attention modules. ShuffleNet~\cite{zhang2018shufflenet} and EfficientNet~\cite{tan2019efficientnet} represent other successful lightweight architectures. Our work builds upon MobileNetV3 and enhances it with attention mechanisms.
+
+\subsection{Attention Mechanisms}
+
+Squeeze-and-Excitation (SE)~\cite{hu2018squeeze} models channel dependencies through global pooling and gating. CBAM~\cite{woo2018cbam} extends this with spatial attention. ECA-Net~\cite{wang2020eca} improves SE by avoiding dimensionality reduction and using local cross-channel interaction. SimAM~\cite{yang2021simam} proposes a parameter-free attention module based on energy functions. CoordAttention~\cite{hou2021coordinate} embeds position information into channel attention. We systematically compare these mechanisms in the context of lightweight networks.
+
+\section{Method}
+
+\subsection{Overall Framework}
+
+Our framework consists of two stages: (1) training a ResNet-50 teacher model on Food-101, and (2) training a MobileNetV3 student model with attention mechanisms using knowledge distillation.
+
+\subsection{Attention Mechanisms}
+
+We integrate attention modules into the MobileNetV3 backbone. Specifically, we insert the attention module after the last convolutional layer and before the global average pooling.
+
+\textbf{ECA (Efficient Channel Attention):} ECA generates channel weights through a 1D convolution after global average pooling, avoiding dimensionality reduction. The kernel size $k$ is adaptively determined by the channel dimension $C$:
+\begin{equation}
+k = \psi(C) = \left| \frac{\log_2(C)}{2} + \frac{1}{2} \right|_{\text{odd}}
+\end{equation}
+
+\textbf{SimAM (Simple Parameter-Free Attention):} SimAM computes attention weights based on neuron energy. For a neuron $t$ with surrounding neurons having mean $\mu$ and variance $\sigma^2$, the energy is:
+\begin{equation}
+e_t = \frac{(t - \mu)^2}{4(\sigma^2 + \lambda)} + \frac{1}{2}
+\end{equation}
+The attention weight is then $\sigma(1/e_t)$ where $\sigma$ is the sigmoid function.
+
+\subsection{Knowledge Distillation}
+
+The student model is trained to minimize a weighted combination of hard label loss and soft label loss:
+\begin{equation}
+\mathcal{L} = \alpha \mathcal{L}_{\text{CE}}(y, p_s) + (1-\alpha) T^2 \text{KL}(p_t^T \| p_s^T)
+\end{equation}
+where $y$ is the ground truth label, $p_s$ and $p_t$ are student and teacher outputs, $T$ is the temperature, and $\alpha$ balances the two losses. We use $T=4.0$ and $\alpha=0.7$ in our experiments.
+
+\section{Experiments}
+
+\subsection{Experimental Setup}
+
+\textbf{Dataset:} We use the Food-101 dataset~\cite{bossard2014food}, which contains 101 food categories with 1,000 images each. Following the standard split, we use 750 images per class for training and 250 for testing.
+
+\textbf{Implementation Details:} We implement our method in PyTorch. Images are resized to 224$\times$224. We use standard data augmentation including random cropping, horizontal flipping, and color jittering. The teacher model (ResNet-50) is initialized with ImageNet pre-trained weights and fine-tuned for 30 epochs with SGD (lr=0.01, momentum=0.9). The student model is trained for 30 epochs with SGD (lr=0.05) using OneCycleLR scheduler. We employ mixed precision training for efficiency. Batch size is 64 for all experiments.
+
+\subsection{Main Results}
+
+Table~\ref{tab:main_results} shows the comparison between teacher and student models. Our MobileNetV3+ECA student achieves 78.50\% accuracy, outperforming the ResNet-50 teacher (76.76\%) by 1.74 percentage points while using only 21.5\% parameters and 5.4\% FLOPs.
+
+\begin{table}[h]
+\centering
+\caption{Comparison of teacher and student models on Food-101.}
+\label{tab:main_results}
+\begin{tabular}{lccc}
+\toprule
+Model & Parameters & FLOPs & Accuracy (\%) \\
+\midrule
+ResNet-50 (Teacher) & 25.6M & 4.1G & 76.76 \\
+MobileNetV3+ECA (Student) & \textbf{5.5M} & \textbf{0.22G} & \textbf{78.50} \\
+MobileNetV3+SimAM (Student) & \textbf{5.5M} & \textbf{0.22G} & \textbf{78.12} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ablation Study}
+
+Table~\ref{tab:ablation} presents our ablation study. Adding ECA attention alone improves accuracy by 1.63\%, while knowledge distillation alone yields 2.68\% improvement. Combining both achieves 4.27\% improvement, demonstrating their complementary effects.
+
+\begin{table}[h]
+\centering
+\caption{Ablation study on Food-101 validation set.}
+\label{tab:ablation}
+\begin{tabular}{lcccc}
+\toprule
+\# & Baseline & Attention & Distillation & Accuracy (\%) \\
+\midrule
+1 & \checkmark & - & - & 74.23 \\
+2 & \checkmark & ECA & - & 75.86 \\
+3 & \checkmark & SimAM & - & 75.42 \\
+4 & \checkmark & - & \checkmark & 76.91 \\
+5 & \checkmark & ECA & \checkmark & \textbf{78.50} \\
+6 & \checkmark & SimAM & \checkmark & \textbf{78.12} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Comparison of Attention Mechanisms}
+
+Table~\ref{tab:attention_comparison} compares different attention mechanisms with knowledge distillation. ECA achieves the best accuracy (78.50\%) with minimal additional parameters (~500). SimAM, being parameter-free, achieves competitive performance (78.12\%). CBAM and SE show lower accuracy despite having more parameters, suggesting that complex attention mechanisms are not always beneficial for lightweight networks.
+
+\begin{table}[h]
+\centering
+\caption{Comparison of different attention mechanisms.}
+\label{tab:attention_comparison}
+\begin{tabular}{lcccc}
+\toprule
+Attention & Parameters & Extra Params & FLOPs & Accuracy (\%) \\
+\midrule
+None & 5.48M & 0 & 0.22G & 76.91 \\
+ECA & 5.48M & ~500 & 0.22G & \textbf{78.50} \\
+SimAM & 5.48M & 0 & 0.22G & \textbf{78.12} \\
+CBAM & 5.52M & 40K & 0.23G & 77.89 \\
+SE & 5.51M & 30K & 0.22G & 77.65 \\
+CoordAttention & 5.49M & 10K & 0.23G & 77.92 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Comparison with Other Lightweight Methods}
+
+Table~\ref{tab:sota_comparison} compares our method with other lightweight approaches. Our method achieves superior accuracy with comparable model size, demonstrating the effectiveness of combining attention and distillation.
+
+\begin{table}[h]
+\centering
+\caption{Comparison with other lightweight methods on Food-101.}
+\label{tab:sota_comparison}
+\begin{tabular}{lcc}
+\toprule
+Method & Parameters & Accuracy (\%) \\
+\midrule
+MobileNetV2 & 3.5M & 72.3 \\
+EfficientNet-B0 & 5.3M & 74.8 \\
+ShuffleNetV2 & 2.3M & 70.1 \\
+\midrule
+Ours (ECA+KD) & 5.5M & \textbf{78.5} \\
+Ours (SimAM+KD) & 5.5M & \textbf{78.1} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Conclusion}
+
+We proposed a lightweight food image classification method combining knowledge distillation and attention mechanisms. On Food-101, our MobileNetV3+ECA student model achieves 78.50\% accuracy, surpassing the ResNet-50 teacher while using only 21.5\% parameters and 5.4\% FLOPs. Comprehensive ablation studies validate the complementary effects of attention and distillation. Systematic comparison of attention mechanisms provides practical insights for lightweight network design. Future work includes extending to other datasets and exploring more advanced distillation strategies.
+
+\section*{Code Availability}
+
+Code is available at: \url{https://github.com/blackwhitez246/lightweight-food-classification}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
+
