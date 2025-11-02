@@ -1,240 +1,160 @@
-# Paper: Lightweight Food Image Classification
+# Paper: Orthogonal Learning - Complementary Biases of Knowledge Distillation and Attention
 
-这个文件夹包含arXiv论文的LaTeX源码。
+This directory contains the LaTeX source files for the research paper.
 
-## 📁 文件说明
+## 📄 Available Versions
 
-- `main.tex` - 论文主文件
-- `references.bib` - 参考文献（BibTeX格式）
-- `figures/` - 图片文件夹（需要你添加）
+- **`main_en.tex`**: English version of the paper
+- **`main_cn.tex`**: Chinese version of the paper (中文版本)
+- **`references.bib`**: Shared bibliography file
 
-## 🔨 本地编译
+## 🖼️ Figures
 
-### 方法1：使用pdflatex（推荐）
+All paper figures are located in the `figures/` subdirectory:
+- `ablation_study.png`: Ablation study visualization
+- `attention_comparison.png`: Attention mechanism comparison
+- `accuracy_params_tradeoff.png`: Accuracy vs parameters trade-off
+- `cross_dataset_comparison.png`: Cross-dataset generalization results
+- `flowers102_training.png`: Training curves on Flowers-102
+- `food101_training_curves.png`: Training curves on Food-101
 
-```bash
-# 编译论文
-pdflatex main.tex
-bibtex main
-pdflatex main.tex
-pdflatex main.tex
+## 🔨 Compilation
 
-# 生成的PDF：main.pdf
-```
+### Prerequisites
 
-### 方法2：使用latexmk（更简单）
+Make sure you have a LaTeX distribution installed:
+- **Windows**: MiKTeX or TeX Live
+- **macOS**: MacTeX
+- **Linux**: TeX Live
 
-```bash
-# 一键编译
-latexmk -pdf main.tex
+Required packages:
+- For English version: `article`, standard LaTeX packages
+- For Chinese version: `ctexart`, XeLaTeX support
 
-# 清理临时文件
-latexmk -c
-```
-
-### 方法3：使用Overleaf（在线）
-
-1. 访问 https://www.overleaf.com/
-2. 创建新项目
-3. 上传 `main.tex` 和 `references.bib`
-4. 点击 "Recompile"
-
-## 📋 提交前检查清单
-
-- [ ] 更新作者信息（Your Name → 你的名字）
-- [ ] 更新单位信息（Your Institution）
-- [ ] 更新邮箱（your.email@example.com）
-- [ ] 更新GitHub链接（yourusername → 你的用户名）
-- [ ] 添加实验结果图片到 `figures/` 文件夹
-- [ ] 检查所有表格数据是否正确
-- [ ] 检查参考文献是否完整
-- [ ] 编译成功，无错误和警告
-- [ ] PDF大小 < 10MB
-
-## 🖼️ 需要添加的图片
-
-建议添加以下图片到 `figures/` 文件夹：
-
-1. **architecture.png** - 模型架构图
-   - 展示教师-学生框架
-   - 展示注意力模块位置
-
-2. **training_curves.png** - 训练曲线
-   - Loss曲线
-   - 准确率曲线
-
-3. **attention_comparison.png** - 注意力机制对比
-   - 不同注意力的性能柱状图
-
-4. **inference_time.png** - 推理时间对比
-   - 各模型的推理速度对比
-
-## 📊 如何生成图片
-
-### 训练曲线
-
-```python
-import matplotlib.pyplot as plt
-import json
-
-# 读取训练历史
-with open('../checkpoints/eca/history_mobilenetv3_eca.json', 'r') as f:
-    history = json.load(f)
-
-# 绘制准确率
-plt.figure(figsize=(10, 6))
-plt.plot(history['train_acc'], label='Train')
-plt.plot(history['val_acc'], label='Validation')
-plt.xlabel('Epoch')
-plt.ylabel('Accuracy (%)')
-plt.title('Training Curves')
-plt.legend()
-plt.grid(True)
-plt.savefig('figures/training_curves.png', dpi=300, bbox_inches='tight')
-```
-
-### 注意力对比图
-
-```python
-import matplotlib.pyplot as plt
-import numpy as np
-
-# 数据
-attentions = ['Baseline', 'ECA', 'SimAM', 'CBAM', 'SE', 'Coord']
-accuracies = [76.91, 78.50, 78.12, 77.89, 77.65, 77.92]
-
-# 绘图
-plt.figure(figsize=(10, 6))
-bars = plt.bar(attentions, accuracies, color='skyblue')
-bars[1].set_color('orange')  # 突出ECA
-bars[2].set_color('green')   # 突出SimAM
-
-plt.ylabel('Accuracy (%)')
-plt.title('Comparison of Different Attention Mechanisms')
-plt.ylim([70, 80])
-plt.grid(axis='y', alpha=0.3)
-
-# 在柱子上标注数值
-for bar, acc in zip(bars, accuracies):
-    plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.2,
-             f'{acc:.2f}%', ha='center', va='bottom')
-
-plt.savefig('figures/attention_comparison.png', dpi=300, bbox_inches='tight')
-```
-
-## 🚀 打包提交到arXiv
-
-### 创建提交包
+### Compile English Version
 
 ```bash
-# 方法1：tar.gz（推荐）
-tar -czf arxiv_submission.tar.gz main.tex references.bib figures/
-
-# 方法2：zip
-zip -r arxiv_submission.zip main.tex references.bib figures/
+cd paper
+xelatex main_en.tex
+bibtex main_en
+xelatex main_en.tex
+xelatex main_en.tex
 ```
 
-### 提交到arXiv
-
-1. 登录 https://arxiv.org/
-2. 点击 "Submit"
-3. 上传 `arxiv_submission.tar.gz`
-4. 填写元数据
-5. 预览并提交
-
-详细步骤见: `../arxiv_submission_guide.md`
-
-## ⚠️ 常见问题
-
-### Q: 编译失败："File not found: xxx.sty"
-
-**A**: 缺少LaTeX包，安装即可：
+Or use `pdflatex` if XeLaTeX is not available:
 ```bash
-# Ubuntu/Debian
-sudo apt-get install texlive-full
-
-# macOS
-brew install --cask mactex
-
-# Windows
-# 下载安装 MiKTeX 或 TeX Live
+pdflatex main_en.tex
+bibtex main_en
+pdflatex main_en.tex
+pdflatex main_en.tex
 ```
 
-### Q: 参考文献不显示
+### Compile Chinese Version
 
-**A**: 需要运行bibtex：
+**Note**: Chinese version requires XeLaTeX for proper font rendering.
+
 ```bash
-pdflatex main.tex
-bibtex main      # 这一步生成参考文献
-pdflatex main.tex
-pdflatex main.tex
+cd paper
+xelatex main_cn.tex
+bibtex main_cn
+xelatex main_cn.tex
+xelatex main_cn.tex
 ```
 
-### Q: 图片不显示
+### Quick Compilation Script
 
-**A**: 检查：
-1. 图片文件是否存在
-2. 文件名是否正确（区分大小写）
-3. 路径是否正确
+Use the provided compilation scripts:
 
-### Q: PDF太大（>10MB）
-
-**A**: 压缩图片：
+**Linux/macOS:**
 ```bash
-# 使用ImageMagick压缩
-convert input.png -quality 85 output.png
+bash ../scripts/compile_paper.sh
 ```
 
-## 📝 论文修改建议
+**Windows:**
+```cmd
+..\scripts\compile_paper.bat
+```
 
-### 需要自定义的部分
+## 📋 Paper Structure
 
-1. **摘要** (main.tex 第35-42行)
-   - 根据实际实验结果更新数字
+### English Version (main_en.tex)
 
-2. **引言** (main.tex 第46-70行)
-   - 可以根据你的研究动机调整
+1. **Abstract**: Overview of the lightweight food classification method
+2. **Introduction**: Problem motivation and main contributions
+3. **Related Work**: Knowledge distillation, lightweight networks, attention mechanisms
+4. **Method**: Overall framework, attention mechanisms, knowledge distillation
+5. **Experiments**: Setup, main results, ablation studies, comparisons
+6. **Conclusion**: Summary and future work
 
-3. **实验结果** (main.tex 第134-189行)
-   - 更新为真实的实验数据
-   - 如果没做实验，保持当前理论值
+### Chinese Version (main_cn.tex)
 
-4. **表格数据** (main.tex)
-   - Table 1: 主要结果对比
-   - Table 2: 消融实验
-   - Table 3: 注意力机制对比
-   - Table 4: 与其他方法对比
+中文版包含与英文版相同的内容结构，并增加了以下部分：
+- 正交学习理论框架的详细阐述
+- 更详细的实验分析和讨论
+- 方法论洞见和实践指导
 
-### 可选的改进
+## 🔧 Troubleshooting
 
-1. **添加图片**
-   - 架构图更直观
-   - 可视化结果更有说服力
+### Missing Packages
 
-2. **扩充相关工作**
-   - 引用更多最新论文
-   - 讨论更多相关方法
+If you encounter missing package errors:
 
-3. **增加分析**
-   - 错误分析
-   - 可视化注意力热图
-   - 更深入的讨论
+**TeX Live/MacTeX:**
+```bash
+tlmgr install <package-name>
+```
 
-## 🎓 学术诚信
+**MiKTeX:**
+- Open MiKTeX Console
+- Go to "Packages" tab
+- Search and install missing packages
 
-- ✅ 所有引用的论文都已列在参考文献中
-- ✅ 实验结果真实可靠（如果是理论值请标注）
-- ✅ 代码开源，结果可复现
-- ⚠️ 不要抄袭他人论文
-- ⚠️ 不要伪造实验数据
+### Chinese Font Issues
 
-## 📧 联系方式
+If Chinese characters don't display correctly:
 
-如有问题，请联系：
-- Email: your.email@example.com
-- GitHub: https://github.com/yourusername/lightweight-food-classification
+1. Make sure you're using XeLaTeX (not pdflatex)
+2. Install Chinese fonts on your system
+3. Update the font settings in `main_cn.tex` if needed
 
----
+### Figure Not Found Errors
 
-祝你顺利发表！🚀
+Ensure all figure files are in the `figures/` subdirectory. The LaTeX files use relative paths like:
+```latex
+\includegraphics[width=\columnwidth]{figures/ablation_study.png}
+```
 
+## 📊 Generating Figures
+
+If you need to regenerate the paper figures from experimental results:
+
+```bash
+python ../visualization/plot_results.py
+```
+
+This will create all necessary PNG files in the `figures/` directory.
+
+## 📝 Citation
+
+If you use this work, please cite:
+
+```bibtex
+@article{luo2025orthogonal,
+  title={Orthogonal Learning: Complementary Biases of Knowledge Distillation and Attention},
+  author={Luo, Xiaojuan and Zuo, Bowen},
+  journal={arXiv preprint arXiv:XXXX.XXXXX},
+  year={2025}
+}
+```
+
+## 📧 Contact
+
+For questions about the paper or LaTeX source:
+- **Email**: 21011149@mail.ecust.edu.cn
+- **GitHub Issues**: https://github.com/AlexZander-666/orthogonal-learning-food-classification/issues
+
+## 📚 Additional Resources
+
+- [Overleaf LaTeX Tutorial](https://www.overleaf.com/learn)
+- [LaTeX Wikibook](https://en.wikibooks.org/wiki/LaTeX)
+- [中文LaTeX指南](https://liam.page/2014/09/08/latex-introduction/)

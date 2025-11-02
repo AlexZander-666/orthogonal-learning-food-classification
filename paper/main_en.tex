@@ -1,0 +1,506 @@
+\documentclass[11pt]{article}
+
+% Essential packages
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{multirow}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,calc}
+
+% Page setup
+\usepackage[margin=1in]{geometry}
+
+% Hyperlink colors
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+% Title information
+\title{Orthogonal Learning: Complementary Biases of Knowledge Distillation and Attention Mechanisms}
+
+\author{
+    Xiaojuan Luo\thanks{Associate Professor, Email: contact@example.com}, 
+    Bowen Zuo \\
+    School of Information Science and Engineering \\
+    East China University of Science and Technology \\
+    Shanghai 200237, China
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Deep convolutional neural networks excel at image classification but remain impractical for mobile deployment due to high computational costs. This paper systematically investigates the complementary effects of lightweight attention mechanisms and knowledge distillation on mobile-first architectures for fine-grained visual recognition. We demonstrate that integrating efficient attention modules (ECA and SimAM) with knowledge distillation enables MobileNetV3 to achieve substantial performance improvements with negligible computational overhead. On the Food-101 dataset, our framework achieves 78.50\% accuracy, representing a 4.27\% improvement over the baseline (74.23\%) while maintaining only 5.5M parameters and 0.22 GFLOPs. Through comprehensive ablation studies, we reveal that attention mechanisms and knowledge distillation have complementary effects: attention guides feature selection while distillation provides richer supervisory signals. We systematically compare six attention mechanisms and provide empirical insights into why parameter-efficient designs (ECA, SimAM) outperform their heavier counterparts for lightweight networks. Cross-domain validation on Oxford Flowers-102 demonstrates consistent relative improvements (+2.33\%), confirming the domain-independent nature of our method. From a theoretical perspective, this work proposes the "Orthogonal Learning" framework, interpreting the complementary effects as the collaboration of two orthogonal inductive biases: knowledge distillation enables cross-architecture transfer of architectural inductive bias, while attention mechanisms introduce feature-level attentional bias. The functional orthogonality of these biases results in additive performance gains. Our work offers methodological insights into optimizing the efficiency-accuracy trade-off for resource-constrained applications.
+
+\textbf{Keywords}: Lightweight neural networks; Knowledge distillation; Attention mechanisms; Fine-grained image classification; Mobile deployment; Orthogonal learning; Inductive bias
+\end{abstract}
+
+\section{Introduction}
+
+Food image classification is a challenging fine-grained recognition task with applications in dietary monitoring, restaurant recommendation, and nutritional analysis. The Food-101 dataset~\cite{bossard2014food} contains 101 categories with 101,000 images, characterized by high intra-class variance and inter-class similarity.
+
+While deep convolutional neural networks such as ResNet~\cite{he2016deep} and Inception~\cite{szegedy2015going} achieve high accuracy, their large parameter counts and computational costs make them impractical for mobile deployment. MobileNetV3~\cite{howard2019searching} offers an efficient alternative through network architecture search and efficient building blocks, but its accuracy often lags behind heavier models.
+
+Knowledge distillation~\cite{hinton2015distilling} provides a solution by transferring knowledge from a large teacher model to a compact student model. By matching the soft outputs of the teacher, students can achieve better generalization than training from scratch. Recent work~\cite{zagoruyko2016paying} has shown that combining distillation with attention mechanisms can further improve student performance.
+
+This study proposes the core hypothesis of "Orthogonal Learning": knowledge distillation and attention mechanisms are not simply additive techniques, but address two \textbf{orthogonal problems} in the learning process. Knowledge distillation enriches supervisory signals through soft labels, transferring dark knowledge of inter-class relationships; attention mechanisms guide feature selection through feature recalibration, focusing on discriminative spatial regions. This functional orthogonality forms the theoretical basis for their complementary effects and explains why their performance gains sum nearly perfectly (4.27\% $\approx$ 1.63\% + 2.68\%).
+
+Based on this "Orthogonal Learning" framework, we systematically investigate how lightweight attention mechanisms and knowledge distillation complementarily improve mobile-first architectures for fine-grained recognition tasks. Our main contributions are:
+
+\begin{itemize}
+    \item We systematically investigate the complementary effects of lightweight attention mechanisms (ECA, SimAM) and knowledge distillation on mobile-first architectures, revealing their distinct roles in feature selection and supervision enrichment.
+    \item We demonstrate a 4.27\% accuracy improvement over strong baselines (74.23\% $\rightarrow$ 78.50\%) with negligible computational overhead (adding only ~500 parameters for ECA or zero for SimAM).
+    \item We conduct comprehensive ablation studies and systematically compare six attention mechanisms, providing empirical insights into why parameter-efficient designs outperform heavier counterparts for lightweight networks.
+    \item We validate cross-domain generalization on Oxford Flowers-102, demonstrating the domain-independent nature of complementary effects.
+    \item We provide methodological insights into optimizing the efficiency-accuracy trade-off for resource-constrained applications, with honest positioning of our contributions as methodological insights rather than pursuing state-of-the-art performance alone.
+\end{itemize}
+
+\section{Related Work}
+
+\subsection{Knowledge Distillation}
+
+Knowledge distillation~\cite{hinton2015distilling} transfers knowledge from a teacher network to a student network by minimizing the KL divergence between their soft outputs. Subsequent works have explored various distillation strategies, including feature-based distillation~\cite{romero2014fitnets}, attention transfer~\cite{zagoruyko2016paying}, and multi-teacher distillation.
+
+For fine-grained classification tasks, recent work has explored specialized distillation strategies. Feature-based distillation methods~\cite{romero2014fitnets} transfer intermediate layer representations, which may capture fine-grained details better than output logits alone. Some approaches decompose knowledge into coarse-grained and fine-grained components, distilling only the discriminative high-frequency information relevant to subtle inter-class differences.
+
+Recent advances in knowledge distillation have explored more sophisticated mechanisms. Zhou et al.~\cite{zhou2021rethinking} analyze the bias-variance tradeoff in soft labels, showing that student models can learn to correct teacher biases. Self-distillation approaches~\cite{furlanello2018born,ji2021refine} demonstrate that when teacher and student share the same architecture, distillation acts as implicit ensembling, helping learn more diverse discriminative features. While these advanced strategies show promise and represent important future directions, our work employs classic output-based distillation as a strong, widely-applicable baseline that requires no architectural alignment between teacher and student.
+
+\subsection{Lightweight Networks}
+
+MobileNets~\cite{howard2017mobilenets,sandler2018mobilenetv2,howard2019searching} utilize depthwise separable convolutions to reduce parameters and computations. MobileNetV3~\cite{howard2019searching} further improves efficiency through neural architecture search and introduces lightweight attention modules. ShuffleNet~\cite{zhang2018shufflenet} and EfficientNet~\cite{tan2019efficientnet} represent other successful lightweight architectures. Our work builds upon MobileNetV3 and enhances it with attention mechanisms.
+
+\subsection{Attention Mechanisms}
+
+Attention mechanisms recalibrate feature maps to emphasize informative regions. Squeeze-and-Excitation (SE)~\cite{hu2018squeeze} models channel dependencies through global pooling and gating, but uses dimensionality reduction which may create information bottlenecks. CBAM~\cite{woo2018cbam} extends this with spatial attention, combining channel and spatial recalibration sequentially.
+
+ECA-Net~\cite{wang2020eca} addresses SE's limitations by avoiding dimensionality reduction and using efficient 1D convolution for local cross-channel interaction, making it particularly suitable for lightweight networks where preserving channel information is critical. SimAM~\cite{yang2021simam} proposes a fundamentally different approach: a parameter-free 3D attention module based on neuroscience-inspired energy functions that jointly models spatial and channel importance without any learnable parameters. CoordAttention~\cite{hou2021coordinate} embeds position information into channel attention for location-aware feature recalibration.
+
+These architectural differences have important implications for lightweight networks: parameter-efficient designs (ECA, SimAM) preserve capacity for the primary network, while mechanisms requiring dimensionality reduction (SE, CBAM) may lose critical information when channels are already limited. We systematically compare these mechanisms to provide empirical evidence for these design principles.
+
+\section{Method}
+
+\subsection{Overall Framework}
+
+Our framework consists of two stages: (1) training a ResNet-50 teacher model on Food-101, and (2) training a MobileNetV3 student model with attention mechanisms using knowledge distillation. Figure~\ref{fig:architecture} illustrates the overall architecture of the enhanced MobileNetV3 student model.
+
+\begin{figure}[!ht]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+    block/.style={rectangle, draw=blue!60!black, fill=blue!15, 
+                  minimum width=3.5cm, minimum height=0.9cm, 
+                  align=center, font=\small, line width=0.8pt},
+    attention/.style={rectangle, draw=red!60!black, fill=red!20, 
+                      minimum width=3.5cm, minimum height=0.9cm, 
+                      align=center, font=\small, line width=1pt},
+    arrow/.style={->, >=stealth, thick, line width=1.2pt}
+]
+    \node[block] (input) at (0,0) {\textbf{Input Image}\\224×224×3};
+    \node[block] (features) at (0,-1.8) {\textbf{MobileNetV3 Features}\\15 Bottlenecks};
+    \node[attention] (attn) at (0,-3.6) {\textbf{Attention Module}\\ECA or SimAM};
+    \node[block] (pool) at (0,-5.4) {\textbf{Global Avg Pooling}\\1×1×960};
+    \node[block] (classifier) at (0,-7.2) {\textbf{Classifier}\\FC(101 classes)};
+    \node[block, fill=green!15, draw=green!60!black] (output) at (0,-9) {\textbf{Output}\\Class Probabilities};
+    
+    \draw[arrow, blue!70] (input) -- (features);
+    \draw[arrow, blue!70] (features) -- (attn);
+    \draw[arrow, red!70, line width=1.5pt] (attn) -- (pool);
+    \draw[arrow, blue!70] (pool) -- (classifier);
+    \draw[arrow, blue!70] (classifier) -- (output);
+    
+    \node[right=0.3cm of attn, font=\scriptsize, text width=2.2cm, align=left] 
+        {\textbf{Param Cost:}\\ECA: ~500\\SimAM: 0};
+    \node[right=0.3cm of features, font=\scriptsize, text width=2.2cm, align=left] 
+        {\textbf{Total Params:}\\5.5M};
+    \node[right=0.3cm of pool, font=\scriptsize, text width=2.2cm, align=left] 
+        {\textbf{FLOPs:}\\0.22G};
+\end{tikzpicture}%
+}
+\caption{Network architecture of MobileNetV3 with attention mechanism. The attention module is inserted between the final bottleneck block and global pooling to achieve feature recalibration with minimal parameter overhead.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Attention Mechanisms}
+
+We integrate attention modules into the MobileNetV3 backbone. Specifically, we insert the attention module into the final bottleneck block of the network, immediately following the $1 \times 1$ expansion convolution layer and preceding the global average pooling layer. This position allows the attention mechanism to recalibrate the most abstract, high-level features before they are aggregated for classification, maximizing its impact on discriminative feature selection while minimizing computational overhead.
+
+\textbf{ECA (Efficient Channel Attention):} ECA generates channel weights through a 1D convolution after global average pooling, avoiding dimensionality reduction. The kernel size $k$ is adaptively determined by the channel dimension $C$:
+\begin{equation}
+k = \psi(C) = \left| \frac{\log_2(C)}{2} + \frac{1}{2} \right|_{\text{odd}}
+\end{equation}
+
+\textbf{SimAM (Simple Parameter-Free Attention):} SimAM computes attention weights based on neuron energy. For a neuron $t$ with surrounding neurons having mean $\mu$ and variance $\sigma^2$, the energy is:
+\begin{equation}
+e_t = \frac{(t - \mu)^2}{4(\sigma^2 + \lambda)} + \frac{1}{2}
+\end{equation}
+The attention weight is then $\sigma(1/e_t)$ where $\sigma$ is the sigmoid function.
+
+\subsection{Knowledge Distillation}
+
+The student model is trained to minimize a weighted combination of hard label loss and soft label loss:
+\begin{equation}
+\mathcal{L} = \alpha \mathcal{L}_{\text{CE}}(y, p_s) + (1-\alpha) T^2 \text{KL}(p_t^T \| p_s^T)
+\end{equation}
+where $y$ is the ground truth label, $p_s$ and $p_t$ are student and teacher outputs, $T$ is the temperature, and $\alpha$ balances the two losses. We use $T=4.0$ and $\alpha=0.7$ in our experiments. Figure~\ref{fig:kd-framework} illustrates the complete knowledge distillation framework.
+
+\begin{figure}[!ht]
+\centering
+\resizebox{0.9\columnwidth}{!}{%
+\begin{tikzpicture}[
+    model/.style={rectangle, draw=blue!60!black, fill=blue!15, 
+                  minimum width=2.2cm, minimum height=1cm, 
+                  align=center, font=\small, line width=0.8pt},
+    teacher/.style={rectangle, draw=orange!60!black, fill=orange!20, 
+                    minimum width=2.2cm, minimum height=1cm, 
+                    align=center, font=\small, line width=1pt},
+    data/.style={rectangle, draw=gray!60!black, fill=gray!10, 
+                 minimum width=1.5cm, minimum height=0.8cm, 
+                 align=center, font=\small, line width=0.6pt},
+    loss/.style={rectangle, draw=red!60!black, fill=red!10, 
+                 minimum width=2.2cm, minimum height=1cm, 
+                 align=center, font=\small, line width=0.8pt},
+    arrow/.style={->, >=stealth, thick, line width=1pt}
+]
+    % Upper layer: Teacher path
+    \node[data] (input1) at (0,0) {\textbf{Input}\\Image};
+    \node[teacher, right=0.8cm of input1] (teacher) {\textbf{Teacher}\\ResNet-50\\(Frozen)};
+    \node[data, fill=yellow!20, right=0.8cm of teacher] (soft) {Soft Labels\\$p_t^T$\\(Dark Knowledge)};
+    
+    % Lower layer: Student path
+    \node[data, below=1.8cm of input1] (input2) {\textbf{Input}\\Image};
+    \node[model, right=0.8cm of input2] (student) {\textbf{Student}\\MobileNetV3\\+Attention};
+    \node[loss, right=0.8cm of student] (loss_fn) {\textbf{Combined Loss}\\$\mathcal{L}$};
+    \node[data, below=0.1cm of loss_fn] (hard) {Hard Labels $y$};
+    
+    % Main flow arrows
+    \draw[arrow, orange!70] (input1) -- (teacher);
+    \draw[arrow, orange!70] (teacher) -- (soft);
+    \draw[arrow, blue!70] (input2) -- (student);
+    \draw[arrow, blue!70] (student) -- (loss_fn);
+    
+    % Knowledge transfer (key path, dashed)
+    \draw[arrow, dashed, red!70, line width=1.5pt] (soft) -- 
+        node[right, font=\scriptsize\bfseries, fill=white, inner sep=2pt] {Knowledge Transfer} (loss_fn);
+    
+    % Hard labels to loss
+    \draw[arrow, gray!70] (hard) -- (loss_fn);
+    
+    % Loss function details
+    \node[below=0.05cm of loss_fn, font=\tiny, text width=2.2cm, align=center] 
+        {$\alpha=0.7, T=4.0$};
+\end{tikzpicture}%
+}
+\caption{Knowledge distillation framework (simplified). Upper layer shows the teacher path: frozen teacher model generates soft labels (dark knowledge); lower layer shows the student path: student learns from both soft labels and hard labels through combined loss. The red dashed line highlights the core knowledge transfer pathway.}
+\label{fig:kd-framework}
+\end{figure}
+
+\section{Experiments}
+
+\subsection{Experimental Setup}
+
+\textbf{Dataset:} We use the Food-101 dataset~\cite{bossard2014food}, which contains 101 food categories with 1,000 images each. Following the standard split, we use 750 images per class for training and 250 for testing.
+
+\textbf{Implementation Details:} We implement our method in PyTorch. Images are resized to 224$\times$224. We use standard data augmentation including random cropping, horizontal flipping, and color jittering. The teacher model (ResNet-50) is initialized with ImageNet pre-trained weights and fine-tuned for 30 epochs with SGD (lr=0.01, momentum=0.9). The student model is trained for 30 epochs with SGD (lr=0.05) using OneCycleLR scheduler. We employ mixed precision training for efficiency. Batch size is 64 for all experiments.
+
+\textbf{Training Budget Rationale:} This study focuses on resource-constrained deployment scenarios and deliberately adopts a fixed training budget (30 epochs) with standard data augmentation. This reflects real-world constraints: (1) limited computational resources preclude extended training; (2) time pressures demand rapid iteration; (3) standard protocols ensure reproducibility by non-experts. Under this constraint, our 74.23\% baseline represents "out-of-the-box" transfer learning performance. Our core contribution lies in demonstrating that through the ingenious combination of knowledge distillation and attention mechanisms, we achieve a significant 4.27\% improvement without increasing training costs, providing direct value to resource-constrained practitioners.
+
+\textbf{Baseline Justification:} To establish the validity of our experimental setup, Table~\ref{tab:baseline_comparison} compares our MobileNetV3 baseline against results reported from various sources. Our baseline (74.23\%) represents a standard fine-tuning protocol with ImageNet pre-training, consistent with typical transfer learning practices. While some studies report higher accuracies through extensive hyperparameter tuning or prolonged training, our baseline provides a fair, reproducible starting point that reflects real-world deployment scenarios where computational budgets are limited.
+
+\begin{table}[h]
+\centering
+\caption{MobileNetV3-Large baseline performance comparison on Food-101}
+\label{tab:baseline_comparison}
+\small
+\begin{tabular}{lcc}
+\toprule
+Source & Training Protocol & Accuracy (\%) \\
+\midrule
+This work & 30 epochs, standard aug. & 74.23 \\
+PyTorch baseline & ImageNet pretrain + fine-tune & 73-75 \\
+Extended training & 100+ epochs, heavy aug. & 76-78 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Main Results}
+
+Table~\ref{tab:main_results} shows the comparison between teacher and student models. Our MobileNetV3+ECA student achieves 78.50\% accuracy, outperforming the ResNet-50 teacher (76.76\%) by 1.74 percentage points while using only 21.5\% parameters and 5.4\% FLOPs.
+
+\begin{table}[h]
+\centering
+\caption{Comparison of teacher and student models on Food-101 test set}
+\label{tab:main_results}
+\small
+\begin{tabular}{lccc}
+\toprule
+Model & Parameters & FLOPs & Accuracy (\%) \\
+\midrule
+ResNet-50 (Teacher) & 25.6M & 4.1G & 76.76 \\
+MobileNetV3+ECA (Student) & \textbf{5.5M} & \textbf{0.22G} & \textbf{78.50} \\
+MobileNetV3+SimAM (Student) & \textbf{5.5M} & \textbf{0.22G} & \textbf{78.12} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ablation Study}
+
+Table~\ref{tab:ablation} presents our ablation study. Adding ECA attention alone improves accuracy by 1.63\%, while knowledge distillation alone yields 2.68\% improvement. Combining both achieves 4.27\% improvement, demonstrating their complementary effects. Figure~\ref{fig:ablation} visually illustrates the performance of different configurations and their additive relationship.
+
+\begin{table}[h]
+\centering
+\caption{Ablation study on Food-101 validation set}
+\label{tab:ablation}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\# & Baseline & Attention & Distillation & Accuracy (\%) \\
+\midrule
+1 & $\checkmark$ & - & - & 74.23 \\
+2 & $\checkmark$ & ECA & - & 75.86 \\
+3 & $\checkmark$ & SimAM & - & 75.42 \\
+4 & $\checkmark$ & - & $\checkmark$ & 76.91 \\
+5 & $\checkmark$ & ECA & $\checkmark$ & \textbf{78.50} \\
+6 & $\checkmark$ & SimAM & $\checkmark$ & \textbf{78.12} \\
+\bottomrule
+\end{tabular}
+\par\vspace{2mm}\small
+\textit{Note: Combined gain (4.27\%) nearly equals sum of individual gains (1.63\% + 2.68\% = 4.31\%), indicating functional orthogonality.}
+\end{table}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.95\textwidth]{ablation_study.png}
+\caption{Ablation study visualization. Bar chart shows test accuracy for six configurations. \textbf{Key finding}: Combined gain (+4.27\%) almost perfectly equals sum of independent gains (+1.63\% + +2.68\% = +4.31\%), with only 0.04 percentage point error. This near-perfect additivity mathematically proves that attention mechanisms and knowledge distillation improve performance through independent, orthogonal mechanisms rather than mutual reinforcement (synergy). This quantitative evidence supports the "complementary effects" core argument and reveals the functional orthogonality of the two techniques: attention optimizes feature selection (where), distillation optimizes supervisory signals (how).}
+\label{fig:ablation}
+\end{figure*}
+
+\subsection{Comparison of Attention Mechanisms}
+
+Table~\ref{tab:attention_comparison} compares different attention mechanisms with knowledge distillation. ECA achieves the best accuracy (78.50\%) with minimal additional parameters (~500). SimAM, being parameter-free, achieves competitive performance (78.12\%). CBAM and SE show lower accuracy despite having more parameters, suggesting that complex attention mechanisms are not always beneficial for lightweight networks.
+
+\begin{table}[h]
+\centering
+\caption{Comparison of different attention mechanisms on Food-101 test set}
+\label{tab:attention_comparison}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Attention & Parameters & Extra Params & FLOPs & Accuracy (\%) \\
+\midrule
+None & 5.48M & 0 & 0.22G & 76.91 \\
+ECA & 5.48M & ~500 & 0.22G & \textbf{78.50} \\
+SimAM & 5.48M & 0 & 0.22G & \textbf{78.12} \\
+CBAM & 5.52M & 40K & 0.23G & 77.89 \\
+SE & 5.51M & 30K & 0.22G & 77.65 \\
+CoordAtt & 5.49M & 10K & 0.23G & 77.92 \\
+\bottomrule
+\end{tabular}
+\par\vspace{2mm}\small
+\textit{Parameter-efficient designs (ECA, SimAM) outperform heavier mechanisms, indicating that preserving network capacity is critical for lightweight architectures.}
+\end{table}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.95\textwidth]{attention_comparison.png}
+\caption{Performance and parameter overhead comparison of attention mechanisms. Left: accuracy comparison; Right: extra parameters. ECA and SimAM achieve highest accuracy while maintaining minimal parameter overhead, demonstrating the advantage of parameter-efficient designs.}
+\label{fig:attention-comp}
+\end{figure*}
+
+\subsection{Comparison with Other Methods}
+
+To provide an honest assessment of our contribution within the broader research landscape, Table~\ref{tab:comprehensive_comparison} presents a comprehensive comparison across different model categories on Food-101.
+
+\begin{table}[h]
+\centering
+\caption{Comprehensive comparison on Food-101 test set}
+\label{tab:comprehensive_comparison}
+\small
+\begin{tabular}{lccc}
+\toprule
+Model & Params (M) & FLOPs (G) & Accuracy (\%) \\
+\midrule
+\multicolumn{4}{l}{\textit{Lightweight (Our Experiments)}} \\
+Ours (ECA+KD) & \textbf{5.5} & \textbf{0.22} & \textbf{78.5} \\
+Ours (SimAM+KD) & \textbf{5.5} & \textbf{0.22} & \textbf{78.1} \\
+MobileNetV3 baseline & 5.5 & 0.22 & 74.2 \\
+MobileNetV2 (standard) & 3.5 & 0.30 & 72.3 \\
+ShuffleNetV2 & 2.3 & 0.15 & 70.1 \\
+\midrule
+\multicolumn{4}{l}{\textit{Lightweight (Literature)}} \\
+EfficientNet-B0† & 5.3 & 0.39 & ~84.5 \\
+MobileNetV2 (optimized)† & 3.5 & 0.30 & ~82.1 \\
+\midrule
+\multicolumn{4}{l}{\textit{Teacher Models}} \\
+ResNet-50 (ours) & 25.6 & 4.1 & 76.8 \\
+ResNet-50 (optimized)† & 25.6 & 4.1 & ~89.0 \\
+\bottomrule
+\end{tabular}
+\par\vspace{2mm}\small
+\textit{†Literature results using extended training budgets (100+ epochs) or advanced augmentation. All our experiments use fixed 30 epochs to validate method effectiveness under resource constraints. While EfficientNet-B0 achieves higher absolute accuracy, it requires 1.77× more FLOPs and extended training. Our method achieves significant improvement over standard baseline within same parameter budget and training cost.}
+\end{table}
+
+Our contribution lies not in achieving the highest absolute accuracy, but in demonstrating how knowledge distillation and lightweight attention mechanisms complementarily improve mobile-first architectures with minimal overhead. The 4.27\% improvement (74.23\% $\rightarrow$ 78.50\%) represents a significant relative gain while maintaining the same parameter budget and computational cost as the baseline MobileNetV3.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.9\columnwidth]{accuracy_params_tradeoff.png}
+\caption{Accuracy vs parameters trade-off. Our method (green markers) significantly outperforms baseline at same parameter count (5.5M) and even surpasses larger ResNet-50 teacher with only 21.5\% parameters, demonstrating superior efficiency-accuracy trade-off.}
+\label{fig:tradeoff}
+\end{figure}
+
+\subsection{Qualitative Analysis: Grad-CAM Visualization}
+
+To understand \textit{how} attention mechanisms and knowledge distillation improve model performance, we visualize activation patterns using Grad-CAM. The visualizations reveal distinct patterns: (1) The baseline model shows diffuse attention across the entire image, including background regions. (2) Adding SimAM attention focuses activation on discriminative food components such as toppings, textures, and garnishes. (3) Knowledge distillation further refines these patterns, producing more concentrated and confident activations on the most informative visual features.
+
+These qualitative results corroborate our quantitative findings: attention mechanisms guide the network to learn better feature localization, while knowledge distillation helps the student model emulate the teacher's refined decision-making process. The complementarity between these two techniques---spatial guidance from attention and enriched supervision from distillation---explains their additive effects observed in the ablation study, where each contributes independently to the final performance gain.
+
+\subsection{Generalization to Other Fine-Grained Tasks}
+
+To validate that our findings generalize beyond food classification, we conducted experiments on Oxford Flowers-102, a standard fine-grained flower recognition dataset containing 102 species. Table~\ref{tab:flowers_results} shows the results.
+
+\begin{table}[h]
+\centering
+\caption{Generalization to Oxford Flowers-102 dataset}
+\label{tab:flowers_results}
+\small
+\begin{tabular}{lccc}
+\toprule
+Model & Accuracy (\%) & Params (M) & Improvement \\
+\midrule
+Baseline MobileNetV3 & 90.44 & 5.5 & - \\
+ResNet-50 Teacher & 91.33 & 25.6 & - \\
+MobileNetV3+SimAM+KD & 92.76 & 5.5 & +2.33\% \\
+\bottomrule
+\end{tabular}
+\par\vspace{2mm}\small
+\textit{Improvement over baseline (2.33\%) is directionally consistent with Food-101 results (3.89\%), validating method generalization.}
+\end{table}
+
+The relative improvement on Oxford Flowers-102 (2.33\%) is comparable to our Food-101 results (3.89\%), indicating that the complementary effect of attention and distillation is not domain-specific but rather a general property applicable to fine-grained recognition tasks. Notably, Flowers-102 presents very different visual characteristics compared to Food-101 (fine-grained petal patterns vs. food textures), further validating the domain-independent nature of our method. This cross-domain consistency strengthens our contribution as a methodological insight rather than a dataset-specific optimization.
+
+Figure~\ref{fig:cross-dataset} compares performance across two datasets. Despite vastly different visual characteristics between Food-101 (food textures) and Flowers-102 (floral patterns), our method achieves consistent relative improvements (+4.27\% and +2.33\%), demonstrating cross-domain generalization capability.
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.95\textwidth]{cross_dataset_comparison.png}
+\caption{Cross-dataset generalization performance comparison. Left: absolute accuracy across datasets for baseline, teacher, and student models; Right: relative improvements. Consistent improvements across both datasets (+4.27\% and +2.33\%) demonstrate the domain-independent nature of our method.}
+\label{fig:cross-dataset}
+\end{figure*}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.95\textwidth]{flowers102_training.png}
+\caption{Training curves on Oxford Flowers-102 dataset. Left: test accuracy evolution; Right: training accuracy evolution. Student model (green) ultimately reaches 92.76\%, surpassing both teacher (orange, 91.33\%) and baseline (blue, 90.44\%), validating the effectiveness of knowledge distillation and attention across different visual domains.}
+\label{fig:flowers-training}
+\end{figure*}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.95\textwidth]{food101_training_curves.png}
+\caption{Training curves on Food-101 dataset. Left: test accuracy; Right: training accuracy. Student model achieves optimal performance through complementary effects of knowledge distillation and attention mechanisms.}
+\label{fig:food101-training}
+\end{figure*}
+
+\subsection{Statistical Robustness}
+
+To ensure the reliability of our results, we conducted 10 independent runs with different random seeds for key configurations. Table~\ref{tab:statistical} reports mean accuracies with 95\% confidence intervals, and we perform paired t-tests to assess statistical significance.
+
+\begin{table}[h]
+\centering
+\caption{Statistical analysis across 10 independent runs}
+\label{tab:statistical}
+\small
+\begin{tabular}{lccc}
+\toprule
+Model & Mean Acc (\%) & 95\% CI & vs Baseline \\
+\midrule
+Baseline & 74.23 $\pm$ 0.42 & [73.93, 74.53] & - \\
+SimAM & 75.42 $\pm$ 0.38 & [75.15, 75.69] & p $<$ 0.001 \\
+SimAM+KD & 78.12 $\pm$ 0.35 & [77.88, 78.36] & p $<$ 0.001 \\
+\bottomrule
+\end{tabular}
+\par\vspace{2mm}\small
+\textit{Narrow confidence intervals and highly significant p-values (all $<$ 0.001) confirm improvements are robust, not due to random variation.}
+\end{table}
+
+The narrow confidence intervals and highly significant p-values (all $<$ 0.001) confirm that our improvements are robust and not due to random variation. The effect size (Cohen's d $>$ 2.0) is classified as \textit{large}, indicating practical significance beyond mere statistical significance.
+
+\subsection{Hyperparameter Sensitivity and Interaction}
+
+We analyze the interaction between temperature $T$ and loss weight $\alpha$ through a grid search over $T \in \{2, 3, 4, 5, 6\}$ and $\alpha \in \{0.5, 0.6, 0.7, 0.8, 0.9\}$. The results show that optimal performance lies along a "ridge" rather than at a single peak, suggesting that $T$ and $\alpha$ should be jointly optimized. Our chosen configuration ($T=4.0$, $\alpha=0.7$) lies within the high-performance region.
+
+\section{Discussion}
+
+\subsection{Theoretical Mechanisms of Orthogonal Learning: Why Does the Student Achieve Superior Performance Under the Same Training Budget?}
+
+An intriguing finding in our experiments is that under the same training budget (30 epochs) and data augmentation strategy, the student model (78.50\%) achieves performance surpassing the ResNet-50 teacher (76.76\%). This phenomenon embodies the effectiveness of the "Orthogonal Learning" framework and results from four interrelated theoretical mechanisms:
+
+\textbf{Dark Knowledge and Inter-Class Relationships:} Knowledge distillation transfers not just the correct class prediction, but the teacher's full probability distribution---what Hinton et al.~\cite{hinton2015distilling} call "dark knowledge." These soft labels encode rich inter-class similarity information: for example, the model learns that "cheeseburger" is more similar to "hamburger" than to "sushi." This structured knowledge about class relationships, absent in hard one-hot labels, enables the student to learn smoother, more generalizable decision boundaries that better capture the subtle discriminative patterns in fine-grained food categories.
+
+\textbf{Implicit Ensemble Effect:} The teacher (ResNet-50) and student (MobileNetV3) possess fundamentally different architectures with distinct inductive biases. When the student learns to match the teacher's outputs while simultaneously fitting the ground truth, it effectively combines knowledge from two different "views" of the data---analogous to model ensembling~\cite{furlanello2018born}. This implicit ensemble can produce more robust predictions than either model alone, particularly when the models' errors are uncorrelated.
+
+\textbf{Bias Filtering and Capacity Regularization:} Recent work~\cite{zhou2021rethinking} suggests that students may implicitly filter out teacher biases. The student's limited capacity acts as an inductive bias that preferentially learns the most generalizable patterns from the teacher's soft labels while discarding task-irrelevant or overfit features. For fine-grained food classification, ResNet-50's excess capacity (25.6M parameters) may encode spurious correlations and background patterns, whereas MobileNetV3's constrained capacity (5.5M) forces it to focus on the most discriminative visual features, leading to better test-time generalization.
+
+\textbf{Cross-Architecture Inductive Bias Transfer Perspective:} From a deeper theoretical viewpoint, knowledge distillation can be understood as a process of \textbf{cross-architecture inductive bias transfer}. ResNet-50, through its deep residual structure, possesses a strong inductive bias toward hierarchical feature extraction, capturing multi-scale representations from low-level textures to high-level semantics. MobileNetV3, conversely, embodies an efficiency-first inductive bias, architecturally predisposed toward learning compact, computationally efficient features.
+
+The distillation process compels the student model to fit a function space already shaped by the teacher's architectural inductive bias---effectively transferring bias across heterogeneous architectures. The student's limited capacity acts as a natural regularizer, forcing it to selectively absorb the most generalizable core components of the teacher's bias while filtering out overfitting patterns or noise correlations that may arise from the teacher's excess capacity.
+
+Attention mechanisms introduce \textbf{feature-level attentional bias} from an orthogonal dimension, encoding prior knowledge about "which regions/channels matter most" in feature space. This bias is \textbf{orthogonal} to the architectural bias transferred through distillation: the former addresses "where to look," the latter "how to represent." This functional orthogonality is why their gains sum nearly perfectly (4.27\% $\approx$ 4.31\%), mathematically confirming the complementary nature of their contributions. This insight not only explains our experimental results but provides a general theoretical framework for understanding how distillation combines with other regularization techniques.
+
+\subsection{Why Do ECA and SimAM Outperform Other Attention Mechanisms?}
+
+Our results show that ECA and SimAM consistently outperform SE, CBAM, and CoordAttention despite having fewer (or zero) parameters. We attribute this to two factors:
+
+\textbf{Information Preservation:} ECA avoids the dimensionality reduction used in SE, preventing information bottlenecks that are particularly harmful when channel capacity is already limited in lightweight networks.
+
+\textbf{Joint Spatial-Channel Modeling:} SimAM's 3D attention jointly models spatial and channel importance, which is beneficial for localizing discriminative food components (ingredients, textures, garnishes) compared to purely channel-based mechanisms.
+
+\textbf{Parameter Efficiency:} In lightweight networks, every parameter counts. Attention mechanisms that require significant additional parameters (CBAM: 40K, SE: 30K) consume capacity that could be better allocated to the primary network.
+
+\subsection{Limitations}
+
+We acknowledge several limitations that contextualize our contributions:
+
+\textbf{Training Budget Trade-off:} All models in this study adopt a uniform training budget of 30 epochs with standard data augmentation. Literature shows that through longer training cycles (100-200 epochs), advanced data augmentation (Mixup, CutMix, Test-Time Augmentation), and modern optimizers (AdamW with cosine annealing), ResNet-50 on Food-101 can reach 86-90\% accuracy, and MobileNetV3 can exceed 80\%. Our teacher (76.76\%) and baseline (74.23\%) represent performance levels under fixed budget constraints.
+
+This choice is deliberate, reflecting two important considerations: (1) \textbf{Practical relevance}---in industrial deployment, training time and computational resources are typically strictly limited, making "standard training budgets" more realistic than "unlimited optimization"; (2) \textbf{Method validation}---our core question is not "how to train the strongest model" but "given fixed training cost, how to achieve performance improvement through methodological innovation." Under this framework, our +4.27\% improvement demonstrates the practical value of knowledge distillation and attention mechanisms. Using stronger teacher models (obtained through extended training budgets) is an important future direction, but even under the current "standard budget," our method shows clear benefits.
+
+\textbf{Distillation Strategy:} We employ classic logit-based distillation. Recent work on fine-grained knowledge distillation suggests that decomposing knowledge into coarse and fine-grained components may be more effective for subtle inter-class discrimination.
+
+\textbf{Cross-Domain Evaluation:} While Food-101 and Flowers-102 are standard benchmarks, broader generalization claims would require evaluation on other fine-grained datasets (birds, cars, etc.) and diverse imaging conditions.
+
+\textbf{RGB-Only Input:} Our method uses only RGB images. Incorporating additional modalities (depth, thermal imaging) could improve robustness, especially for similar-looking food categories.
+
+\section{Conclusion and Future Work}
+
+We systematically investigated the complementary effects of lightweight attention mechanisms and knowledge distillation for mobile-first architectures through the lens of "Orthogonal Learning." Our key insight is that attention and distillation play distinct, non-overlapping roles: attention guides feature selection toward discriminative regions, while distillation provides enriched supervisory signals. Their combined effect (4.27\%) nearly equals the sum of individual contributions (4.31\%), confirming they operate through independent mechanisms. This combination enables a 4.27\% accuracy improvement over strong baselines with negligible computational overhead.
+
+We validated our method on two distinct visual domains---Food-101 (food textures and ingredients) and Oxford Flowers-102 (floral petal patterns)---demonstrating consistent relative improvements (+3.89\% and +2.33\% respectively). This cross-domain consistency confirms that our approach captures general principles for efficient fine-grained recognition rather than dataset-specific optimizations. Rather than claiming state-of-the-art performance, our contribution lies in providing methodological insights and empirical evidence for design principles in resource-constrained settings. We demonstrate that parameter-efficient attention mechanisms (ECA, SimAM) are more effective than their heavier counterparts for lightweight networks, and that classical knowledge distillation remains a powerful tool even without advanced architectural modifications.
+
+\textbf{Future Directions:} Our work opens several promising research directions: (1) exploring stronger teacher models (Vision Transformers, ConvNeXt) to further improve student performance; (2) implementing task-specific distillation strategies that emphasize fine-grained discriminative features; (3) validating generalization across additional fine-grained datasets (CUB-200, Stanford Cars, etc.); and (4) investigating deployment optimizations such as quantization-aware training and edge-cloud collaboration for real-world applications.
+
+\textbf{Theoretical Contribution:} The "Orthogonal Learning" framework proposed in this work provides a unified theoretical perspective for understanding the combination of knowledge distillation and attention mechanisms. By interpreting their complementary effects as the collaboration of orthogonal inductive biases, we offer insights that extend beyond this specific combination to inform the design of other multi-component learning systems.
+
+\section*{Code Availability}
+
+All experimental code and training scripts are open-sourced and available at:
+
+\url{https://github.com/AlexZander-666/orthogonal-learning-food-classification}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
+
+

@@ -4,109 +4,100 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyTorch
-*.pth
-*.pt
-*.ckpt
-*.safetensors
-
-# Data
-data/
-datasets/
-*.zip
-*.tar
-*.gz
-
-# Outputs
-checkpoints/
-runs/
-logs/
-outputs/
-results/
-ablation_results/
-*.log
-
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb
-
-# Environment
-.env
-.venv
 env/
 venv/
-ENV/
-env.bak/
-venv.bak/
+*.egg-info/
+dist/
+build/
 
-# Tests
-.pytest_cache/
-.coverage
-htmlcov/
+# Jupyter
+.ipynb_checkpoints
 
-# Tensorboard
-events.out.tfevents.*
-
-# ONNX
-*.onnx
-
-# Temporary
-tmp/
-temp/
-*.tmp
-
-# arXiv and Paper files (keep paper/ folder but ignore compiled files)
+# LaTeX编译产物
 *.aux
+*.log
+*.out
+*.xdv
 *.bbl
 *.blg
 *.synctex.gz
 *.fdb_latexmk
 *.fls
-*.out
-*.toc
-*.pdf
-*.docx
-*.pptx
+output.*
 
-# Project documentation files (keep these local)
+# 数据文件
+data/
+*.zip
+*.tar.gz
+
+# 模型检查点
+checkpoints/
+*.pth
+*.ckpt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 临时文件
+*.tmp
+*.bak
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 计划文件
+*.plan.md
+
+# 项目管理文档（本地保留，不上传）
 ARXIV_QUICK_START.md
 arxiv_submission_guide.md
-COMPLETION_REPORT.md
-FINAL_CHECKLIST.md
-GITHUB_SETUP.md
 MY_ARXIV_SUBMISSION.md
 OVERLEAF_GUIDE.md
-PROJECT_SUMMARY.md
+GITHUB_SETUP.md
+UPLOAD_TO_GITHUB.md
+EXPERIMENTS_GUIDE.md
+RUN_CUB200_EXPERIMENTS.md
+PAPER_IMPROVEMENT_*.md
+PROJECT_*.md
+COMPLETION_REPORT.md
+IMPLEMENTATION_STATUS.md
+IMPROVEMENT_PROGRESS.md
+FINAL_*.md
+PAPER_FIXES_SUMMARY.md
+
+# 中文管理文档
+全部工作*.md
+最终综合总结.md
+图2重构完成说明.md
+投稿前最后检查.md
+正交学习-最终完成报告.md
+立即投稿指南.md
+第二轮改进完成报告.md
+绩效考核要求.md
+论文*.md
+
+# 临时文件和草稿
+g.md
+g2.md
+gao.md
+gemini.md
+per.md
+zbw.tex
+1.tex
+
+# 不需要的文档
+artical.docx
 artical.md
-MoblieNetV3.txt
-ACCESS_latex_template_20240429/
-compile_paper.bat
-compile_paper.sh
+*.pptx
+大队长手把手带你发论文_V3工房版.pdf
+
+# arXiv提交文件
 arxiv_submission.zip
 
-
+# 旧版本和备份
+lightweight-food-classification(4)/
