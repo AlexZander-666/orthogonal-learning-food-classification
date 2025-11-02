@@ -35,8 +35,8 @@
 1. **Fork仓库**
    ```bash
    # 在GitHub上点击Fork按钮
-   git clone https://github.com/你的用户名/lightweight-food-classification.git
-   cd lightweight-food-classification
+   git clone https://github.com/你的用户名/orthogonal-learning-food-classification.git
+   cd orthogonal-learning-food-classification
    ```
 
 2. **创建分支**
@@ -173,8 +173,8 @@ class MyAttention(nn.Module):
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yourusername/lightweight-food-classification.git
-cd lightweight-food-classification
+git clone https://github.com/AlexZander-666/orthogonal-learning-food-classification.git
+cd orthogonal-learning-food-classification
 
 # 创建虚拟环境
 conda create -n food_cls_dev python=3.8
@@ -231,8 +231,8 @@ pip install pytest flake8 black isort
 
 如有问题：
 
-- 创建Issue: https://github.com/yourusername/lightweight-food-classification/issues
-- 邮件: your.email@example.com
+- 创建Issue: https://github.com/AlexZander-666/orthogonal-learning-food-classification/issues
+- 邮件: 21011149@mail.ecust.edu.cn
 
 ## 📄 许可证
 

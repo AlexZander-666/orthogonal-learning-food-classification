@@ -131,7 +131,7 @@ tlmgr install ctex
 
 ## 🔗 相关资源
 
-- **代码仓库**：https://github.com/blackwhitez246/lightweight-food-classification
+- **代码仓库**：https://github.com/AlexZander-666/orthogonal-learning-food-classification
 - **Food-101数据集**：https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/
 - **Flowers-102数据集**：torchvision自动下载
 - **实验脚本**：`../experiments/` 目录
@@ -142,7 +142,7 @@ tlmgr install ctex
 
 如有问题，请联系：
 - **邮箱**：21011149@mail.ecust.edu.cn
-- **GitHub**：https://github.com/blackwhitez246
+- **GitHub**：https://github.com/AlexZander-666
 
 ---
 
